@@ -1,6 +1,7 @@
 import time
 import numpy
 import serial
+import serial.tools.list_ports
 import pythonArduinoProgrammer as pyar
 
 #can change this if arduino is hooked into another port
@@ -12,7 +13,7 @@ import pythonArduinoProgrammer as pyar
 arduinoProgram = "Simple_camera_control/Simple_camera_control.ino"
 
 #if you want to program the arduino on startup this is important, otherwise will fail
-#Windows can use this script if the location is changed accordingly
+#Windows can use this script if the location is changed accordingly, AKA find it yourself
 
 #ubuntu Linux
 programLocation = "/usr/local/bin/arduino"
@@ -142,7 +143,7 @@ def ZEROth_testing(arduinoPort, modeSet, exposureTime, initArduino, solenoidPosi
 
 
     except KeyboardInterrupt:
-        print("  existential crisis")
+        print("\nexistential crisis") #why not
 
 
 

@@ -4,7 +4,10 @@
 // /dev/ttyACM0
 // python-build-end
 
+//The aboce is only important for the pythonArduinoProgrammer script.
 
+//Originally this file controlled a specialized camera used for narrow spectrum imaging.
+//All relecant code for camera is removed from this file and others in this repo
 
 #include "variables.h"
 
