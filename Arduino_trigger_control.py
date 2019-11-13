@@ -1,10 +1,7 @@
 import time
 import numpy
 import serial
-import PySpin
-import ck_blackfly as ck
 import pythonArduinoProgrammer as pyar
-import FURST_trigger as ft
 
 #can change this if arduino is hooked into another port
 #you can search this by typing in: ls /dev/
@@ -12,7 +9,7 @@ import FURST_trigger as ft
 # arduinoPort = "/dev/ttyACM1"
 
 #also which program you want to use
-arduinoProgram = "FURST_Simple_camera_control/FURST_Simple_camera_control.ino"
+arduinoProgram = "Simple_camera_control/Simple_camera_control.ino"
 
 #if you want to program the arduino on startup this is important, otherwise will fail
 #Windows can use this script if the location is changed accordingly
@@ -45,7 +42,7 @@ exposureTime = 2000.0
 # exposureTime is exactly what the definition is
 
 
-def ZEROth_testing(cam: PySpin.CameraPtr, arduinoPort, modeSet, exposureTime, initArduino, solenoidPosition):
+def ZEROth_testing(arduinoPort, modeSet, exposureTime, initArduino, solenoidPosition):
 # def ZEROth_testing():
     #need to initialize these so the python doesn't wonder where they are
     image_ptr           = []
@@ -121,10 +118,10 @@ def ZEROth_testing(cam: PySpin.CameraPtr, arduinoPort, modeSet, exposureTime, in
 
                 # Before this write to camera to set exposure onit.
                 # Setting exposure time if larger than a certain amount, to prevent damage to camera
-                if(exposureTime > 200):
-                    cam.ExposureTime.SetValue(float(exposureTime))  # can set exposure time with just a int
-                    test = cam.ExposureTime.GetValue()
-                    print("New exposure time: " + str(test))
+                # if(exposureTime > 200):
+                #     cam.ExposureTime.SetValue(float(exposureTime))  # can set exposure time with just a int
+                #     test = cam.ExposureTime.GetValue()
+                #     print("New exposure time: " + str(test))
 
 
                 s.write(bytes(newMessage,"UTF-8"))
@@ -135,9 +132,6 @@ def ZEROth_testing(cam: PySpin.CameraPtr, arduinoPort, modeSet, exposureTime, in
                 #making sure the command only is sent once
                 arduinoSerial = " "
 
-            if(arduinoSerial[:32] == b'Arduino: starting Camera Trigger'):
-                image_ptr, image_data = ft.trigger_acquire_single(cam)
-                return image_ptr, image_data
 
             if(arduinoSerial[:24] == b'Arduino: opening apeture' or arduinoSerial[:24] == b'Arduino: closing apeture'):
                 #exit out of loop
