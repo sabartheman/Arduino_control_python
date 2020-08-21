@@ -4,66 +4,14 @@
 // /dev/ttyACM0
 // python-build-end
 
-//The aboce is only important for the pythonArduinoProgrammer script.
-
-//Originally this file controlled a specialized camera used for narrow spectrum imaging.
-//All relecant code for camera is removed from this file and others in this repo
 
 #include "variables.h"
-
+// #include <WString.h>
 
 #define MOTORPINS 9
 #define CAMERA_DATA_ACQUISITION_DELAY 1000
 
 
-unsigned long loopStart;
-unsigned long loopEnd;
-
-//for the message receive function
-boolean messageRecieved = false;
-//for when the messages circles back in circular buffer
-boolean waitingRollover = false;
-
-int successFlag = 0;
-
-//defines the current position the messages are inputting into a que
-int waitingMessages = 0;
-//defines the current position of the processed messages
-int parsedMessages = 0;
-//defines the current position of the processing method
-int processPosition = 0;
-int previousProcess = 100;
-
-//keeping track of process execution time
-unsigned long processStart;
-unsigned long processCurrent;
-
-//keeps track of how long the solenoids circuit has been active
-unsigned long solenoidStart;
-unsigned long solenoidCurrent;
-
-//keeps track if a process is active
-boolean processActive = false;
-//keeps track of if in the process the motors have been rotated  in the beginning of a process
-boolean solenoidRotated = false;
-//keeps track of recieved messages
-boolean noMessage = false;
-
-
-
-boolean changeInStorage = false;
-
-
-//where the messages wait until being processed
-static String messageQue[100];
-
-//holding the values of the commands send across
-static String commandQue[100];
-long int exposureQue[100];
-
-//only used in the repeated capture case
-long int lightCaptureQue[100];
-long int darkCaptureQue[100];
 
 
 
@@ -87,6 +35,23 @@ void setup()
 }
 
 
+
+void loop(void){
+  //will be parsing messages after they come in through the UART
+  receiveSerial();
+
+  // Serial.print("storage Location for the messages: "); Serial.println(char(waitingMessages));
+  //will parse the recieved messages
+  parseMessage();
+
+  // Serial.println("now trying to control the shutters");
+  simpleControl();
+
+}
+
+
+
+
 void simpleControl(void){
   // debug line
   // Serial.print("Current Task: "); Serial.println(commandQue[processPosition]);
@@ -105,12 +70,12 @@ void simpleControl(void){
     simpleRepeatedCapture();
   }else if(commandQue[processPosition].startsWith("open")){
     //open solenoid
-    Serial.println("Arduino: opening apeture");
-    simpleOpenSolenoid();
+    // Serial.println("Arduino: opening apeture");
+    simpleOpenSolenoid(solenoidQue[processPosition]);
   }else if(commandQue[processPosition].startsWith("close")){
     //close soleniod
     Serial.println("Arduino: closing apeture");
-    simpleCloseSolenoid();
+    simpleCloseSolenoid(solenoidQue[processPosition]);
   }else if(commandQue[processPosition].startsWith("trigger")){
     //trigger camera after a small delay
     Serial.println("Arduino: starting Camera Trigger");
@@ -129,15 +94,17 @@ void simpleCameraTrigger(void){
 
 }
 
-void simpleOpenSolenoid(void){
+void simpleOpenSolenoid(int motorSelection){
   //just a simple open solenoid function
-  simpleSolenoidControl(motorPin[0]);
+  Serial.print("Arduino: motorpin: " );Serial.println(motorPin[motorSelection - 1]);
+  simpleSolenoidControl(motorPin[motorSelection - 1] + 0 );
 
 }
 
-void simpleCloseSolenoid(void){
+void simpleCloseSolenoid(int motorSelection){
   //just a simple close solenoid function
-  simpleSolenoidControl(motorPin[0]);
+  Serial.print("Arduino: motorpin: " );Serial.println(motorPin[motorSelection - 1]);
+  simpleSolenoidControl(motorPin[motorSelection - 1 ] + 1);
 
 }
 
@@ -231,26 +198,12 @@ void simpleSolenoidControl(int pinNumber){
 
 
 
-void loop(void){
-  //will be parsing messages after they come in through the UART
-  receiveSerial();
-
-  Serial.print("storage Location for the messages: "); Serial.println(char(waitingMessages));
-  //will parse the recieved messages
-  parseMessage();
-
-  simpleControl();
-
-}
-
 
 
 
 
 void receiveSerial(){
   String inputCMD;
-  unsigned long serialStart = millis();
-  boolean serialBool = true;
 
   Serial.println("rdy");
 
@@ -263,7 +216,7 @@ void receiveSerial(){
 
     // if(inputCMD.startsWith("C0,") && (inputCMD.length() < 35 && (inputCMD != messageQue[waitingMessages - 1]))){
     if(inputCMD.startsWith("C0,")){
-      Serial.print("Arduino: Packetized Message recieved: "); Serial.println(inputCMD);
+      Serial.print("ACK\n"); Serial.println(inputCMD);
       changeInStorage = true;
       if(waitingMessages < 100){
         messageQue[waitingMessages++] = inputCMD;
@@ -282,7 +235,7 @@ void receiveSerial(){
 
 
 //pull a message from current position in que and process the cmd
-void parseMessage(){
+void parseMessage(void){
   //check to see if there is a new message, if not skip function
   if(waitingMessages > parsedMessages || (waitingRollover == true)){
     //run parsing methods
@@ -315,53 +268,62 @@ void splitMessage(void){
   String part1 = getValue(messageQue[parsedMessages], ',', 0);
   // Serial.print("Found a part: ");Serial.println(part1);
 
-  String stringCMD = getValue(messageQue[parsedMessages], ',', 1);
+  String solenoidNumber = getValue(messageQue[parsedMessages], ',', 1);
+
+
+  String stringCMD = getValue(messageQue[parsedMessages], ',', 2);
   // Serial.print("Found a part: ");Serial.println(stringCMD);
 
-  String part2 = getValue(messageQue[parsedMessages], ',', 2);
+  String part2 = getValue(messageQue[parsedMessages], ',', 3);
   // Serial.print("Found a part: ");Serial.println(part2);
 
-  String part3 = getValue(messageQue[parsedMessages], ',', 3);
+  String part3 = getValue(messageQue[parsedMessages], ',', 4);
   // Serial.print("Found a part: ");Serial.println(part3);
 
-  String part4 = getValue(messageQue[parsedMessages], ',', 4);
+  String part4 = getValue(messageQue[parsedMessages], ',', 5);
   // Serial.print("Found a part: ");Serial.println(part4);
 
-  String part5 = getValue(messageQue[parsedMessages], ',', 5);
+  String part5 = getValue(messageQue[parsedMessages], ',', 6);
   // Serial.print("Found a part: ");Serial.println(part5);
 
 
-  // Serial.println(stringCMD);
+  // Serial.print("Command part: ");Serial.println(stringCMD);.
 
   if(stringCMD.startsWith("light")){
       //constant, otherwise the trailing
       commandQue[parsedMessages]          = "light";
+      solenoidQue[parsedMessages]         = solenoidNumber.toInt();
       lightCaptureQue[parsedMessages]     = 1;
       darkCaptureQue[parsedMessages]      = 0;
       //this is in microseconds
       exposureQue[parsedMessages]         = part2.toFloat();
   }else if (stringCMD.startsWith("dark")){
       commandQue[parsedMessages]          = "dark";
+      solenoidQue[parsedMessages]         = solenoidNumber.toInt();
       lightCaptureQue[parsedMessages]     = 0;
       darkCaptureQue[parsedMessages]      = 1;
       exposureQue[parsedMessages]         = part2.toFloat();
   }else if (stringCMD.startsWith("repeated")){
       commandQue[parsedMessages]          = "repeated";
+      solenoidQue[parsedMessages]         = solenoidNumber.toInt();
       lightCaptureQue[parsedMessages]     = part2.toFloat();
       darkCaptureQue[parsedMessages]      = part3.toFloat();
       exposureQue[parsedMessages]         = part4.toFloat();
   }else if (stringCMD.startsWith("open")){
       commandQue[parsedMessages]          = "open";
+      solenoidQue[parsedMessages]         = solenoidNumber.toInt();
       lightCaptureQue[parsedMessages]     = 1;
       darkCaptureQue[parsedMessages]      = 0;
       exposureQue[parsedMessages]         = 0;
   }else if (stringCMD.startsWith("trigger")){
       commandQue[parsedMessages]          = "trigger";
+      solenoidQue[parsedMessages]         = solenoidNumber.toInt();
       lightCaptureQue[parsedMessages]     = 1;
       darkCaptureQue[parsedMessages]      = 1;
       exposureQue[parsedMessages]         = part2.toFloat();
   }else if (stringCMD.startsWith("close")){
       commandQue[parsedMessages]          = "close";
+      solenoidQue[parsedMessages]         = solenoidNumber.toInt();
       lightCaptureQue[parsedMessages]     = 0;
       darkCaptureQue[parsedMessages]      = 1;
       exposureQue[parsedMessages]         = 0;
@@ -411,6 +373,17 @@ void initPins(void)
   pinMode(motorPin[7] + 1, OUTPUT);
   pinMode(motorPin[8], OUTPUT);
   pinMode(motorPin[8] + 1, OUTPUT);
+
+  // pinMode(22,OUTPUT);
+  // pinMode(23,OUTPUT);
+  // pinMode(24,OUTPUT);
+  // pinMode(25,OUTPUT);
+  // pinMode(26,OUTPUT);
+  // pinMode(27,OUTPUT);
+  // pinMode(28,OUTPUT);
+  // pinMode(29,OUTPUT);
+
+
   //need to use for testing in vac chamber with heating/cooling
   pinMode(photoAmp_1, INPUT);
   pinMode(photoAmp_2, INPUT);
